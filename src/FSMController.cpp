@@ -7,6 +7,7 @@
 
 #include "FSMController.h"
 #include <iostream>
+#include "FSM.h"
 
 FSMController::FSMController(std::shared_ptr<Character> character):
 	Controller(character),
@@ -85,10 +86,30 @@ ChaseState::~ChaseState(){
 
 /////////////////////////////////////BlinkyStateMachine/////////////////////////////
 BlinkyStateMachine::BlinkyStateMachine(std::shared_ptr<Character> _character):FiniteStateMachine(_character){
-	initialState = std::make_shared<ChaseState>(character);
+	/*initialState = std::make_shared<ChaseState>(character);
 	activeState=initialState;
 	states.push_back(initialState);
 	activeState->addTransition(std::make_shared<PillTransition>(activeState));
+	*/
+
+	auto chase = std::make_shared<ChaseState>(character);
+	auto frightened = std::make_shared<FrightenedState>(character);
+
+	//Guardar estados
+	states.push_back(chase);
+	states.push_back(frightened);
+
+	//Estado incial
+	initialState = chase;
+	activeState = initialState;
+
+	//Transiciones entre estados
+	//Chase --> Frightened
+	chase->addTransition(std::make_shared<ToFrightenedTransition>(frightened, character));
+
+	//Frightened --> Chase
+	frightened->addTransition(std::make_shared<ToChaseTransition>(chase, character));
+
 }
 
 
@@ -109,4 +130,75 @@ BlinkyStateMachine::~BlinkyStateMachine(){
 
 }
 
+///////////////////////////////FrightenedState///////////////////////////////////////
+FrightenedState::FrightenedState(std::shared_ptr<Character> _character) : FSMState(_character){}
 
+Move FrightenedState::onUpdate(const GameState& game)
+{
+	//Posicion del pacman
+	auto pacmanPos = game.getMaze().getNodePos(game.getPacmanPos());
+
+	std::vector<Move> moves;
+	
+	//Obtener posibles movimientos
+	if(character->getDirection() == PASS)
+	{
+		moves = game.getMaze().getPossibleMoves(character->getPos()); 
+	}
+	else
+	{
+		moves = game.getMaze().getGhostLegalMoves(character->getPos(), character->getDirection()); 
+	}
+
+	//Evitar crasheo
+	if(moves.empty()) { return PASS; }
+
+	float maxDis = -1.0f;
+	Move bestMove = moves[0];
+
+	//Buscar el movimiento más lejano
+	for(auto m : moves)
+	{
+		int vecino = game.getMaze().getNeighbour(character->getPos(), m);
+
+		if(vecino < 0) { continue; }
+
+		auto vecinoPos = game.getMaze().getNodePos(vecino);
+		float dist = euclid2(vecinoPos, pacmanPos);
+
+		if(dist > maxDis)
+		{
+			maxDis = dist;
+			bestMove = m;
+		}
+	}
+
+	return bestMove;
+}
+
+
+/////////////////////////////////State Transitions//////////////////////////////////////////7
+// De chase --> Frightened
+ToFrightenedTransition::ToFrightenedTransition(std::shared_ptr<FSMState> next,
+    std::shared_ptr<Character> character) : next(next), character(character) {}
+
+bool ToFrightenedTransition::isValid(const GameState& gs)
+{
+	auto ghost = std::dynamic_pointer_cast<Ghost>(character);
+	return ghost->isEdible();
+}
+
+std::shared_ptr<FSMState> ToFrightenedTransition::getNextState(){ return next; }
+
+
+//De Frightened --> Chase
+ToChaseTransition::ToChaseTransition(std::shared_ptr<FSMState> next,
+    std::shared_ptr<Character> character) : next(next), character(character) {}
+
+bool ToChaseTransition::isValid(const GameState& gs)
+{
+	auto ghost = std::dynamic_pointer_cast<Ghost>(character);
+	return !ghost->isEdible();
+}
+
+std::shared_ptr<FSMState> ToChaseTransition::getNextState(){ return next; }

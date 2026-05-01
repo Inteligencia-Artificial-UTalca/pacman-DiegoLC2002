@@ -43,12 +43,43 @@ public:
 
 };
 
-class BlinkyStateMachine: public FiniteStateMachine{
+class BlinkyStateMachine: public FiniteStateMachine
+{
+	public:
+		BlinkyStateMachine(std::shared_ptr<Character> _character);
+		Move update(const GameState& gs) override;
+		~BlinkyStateMachine();
+};
 
-public:
-	BlinkyStateMachine(std::shared_ptr<Character> _character);
-	Move update(const GameState& gs) override;
-	~BlinkyStateMachine();
+
+class FrightenedState : public FSMState
+{
+	public:
+		FrightenedState(std::shared_ptr<Character> character);
+		Move onUpdate (const GameState& gs) override;
 
 };
+
+class ToFrightenedTransition : public FSMTransition
+{
+	std::shared_ptr<FSMState> next;
+	std::shared_ptr<Character> character;
+
+	public:
+		ToFrightenedTransition(std::shared_ptr<FSMState> next, std::shared_ptr<Character> character);
+		bool isValid(const GameState& gs) override;
+		std::shared_ptr<FSMState> getNextState() override;
+};
+
+class ToChaseTransition : public FSMTransition
+{
+	std::shared_ptr<FSMState> next;
+	std::shared_ptr<Character> character;
+
+	public:
+		ToChaseTransition(std::shared_ptr<FSMState> next, std::shared_ptr<Character> character);
+		bool isValid(const GameState& gs) override;
+		std::shared_ptr<FSMState> getNextState() override;
+};
+
 #endif /* FSMCONTROLLER_H_ */
