@@ -45,12 +45,8 @@ public:
 
 class BlinkyStateMachine: public FiniteStateMachine
 {
-	std::shared_ptr<FSMState> chase;
-    std::shared_ptr<FSMState> scatter;
     std::shared_ptr<FSMState> frightened;
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> modeStart;
-    bool inScatter;
+    std::shared_ptr<FSMState> nonFrightened;
 
 	public:
 		BlinkyStateMachine(std::shared_ptr<Character> _character);
@@ -74,6 +70,24 @@ class ScatterState : public FSMState
 		Move onUpdate(const GameState& gs) override;
 };
 
+class NonFrightenedState : public FSMState
+{
+    std::shared_ptr<FSMState> chase;
+    std::shared_ptr<FSMState> scatter;
+    std::shared_ptr<FSMState> activeSubState;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> modeStart;
+    bool inScatter;
+
+public:
+    NonFrightenedState(std::shared_ptr<Character> character,
+                       std::shared_ptr<FSMState> chase,
+                       std::shared_ptr<FSMState> scatter);
+
+    Move onUpdate(const GameState& gs) override;
+    void onEnter(const GameState& gs) override;
+};
+
 
 class ToFrightenedTransition : public FSMTransition
 {
@@ -86,13 +100,13 @@ class ToFrightenedTransition : public FSMTransition
 		std::shared_ptr<FSMState> getNextState() override;
 };
 
-class ToChaseTransition : public FSMTransition
+class ToNonFrightenedTransition : public FSMTransition
 {
 	std::shared_ptr<FSMState> next;
 	std::shared_ptr<Character> character;
 
 	public:
-		ToChaseTransition(std::shared_ptr<FSMState> next, std::shared_ptr<Character> character);
+		ToNonFrightenedTransition(std::shared_ptr<FSMState> next, std::shared_ptr<Character> character);
 		bool isValid(const GameState& gs) override;
 		std::shared_ptr<FSMState> getNextState() override;
 };

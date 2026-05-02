@@ -92,31 +92,25 @@ BlinkyStateMachine::BlinkyStateMachine(std::shared_ptr<Character> _character):Fi
 	activeState->addTransition(std::make_shared<PillTransition>(activeState));
 	*/
 
-	chase = std::make_shared<ChaseState>(character);
-	scatter = std::make_shared<ScatterState>(character);
+	auto chase = std::make_shared<ChaseState>(character);
+	auto scatter = std::make_shared<ScatterState>(character);
+
+	nonFrightened = std::make_shared<NonFrightenedState>(character, chase, scatter);
 	frightened = std::make_shared<FrightenedState>(character);
 
 	//Guardar estados
-	states.push_back(chase);
-	states.push_back(scatter);
+	states.push_back(nonFrightened);
 	states.push_back(frightened);
 
 	//Estado incial
-	initialState = chase;
+	initialState = nonFrightened;
 	activeState = initialState;
 
-	modeStart = std::chrono::high_resolution_clock::now();
-	inScatter = false; // empieza en Chase
-
 	//Transiciones entre estados
-	//Chase --> Frightened
-	chase->addTransition(std::make_shared<ToFrightenedTransition>(frightened, character));
-
-	//Scatter --> Frightened
-	scatter->addTransition(std::make_shared<ToFrightenedTransition>(frightened, character));
+	nonFrightened->addTransition(std::make_shared<ToFrightenedTransition>(frightened, character));
 
 	//Frightened --> Chase
-	frightened->addTransition(std::make_shared<ToChaseTransition>(chase, character));
+	frightened->addTransition(std::make_shared<ToNonFrightenedTransition>(nonFrightened, character));
 
 }
 
@@ -125,45 +119,13 @@ BlinkyStateMachine::BlinkyStateMachine(std::shared_ptr<Character> _character):Fi
 Move BlinkyStateMachine::update(const GameState& gs){
 
 	//Revisar transiciones a frigtened
-	auto t=activeState->getActiveTransition(gs);
+	auto t = activeState->getActiveTransition(gs);
 	if(t!=nullptr){
 		activeState->onExit(gs);
 		t->onTransition(gs);
 		activeState=t->getNextState();
 		activeState->onEnter(gs);
 	}
-
-	//Manejar tiempo si no se esta en frightened
-	if(activeState != frightened)
-	{
-		auto now = std::chrono::high_resolution_clock::now();
-        double elapsed = std::chrono::duration<double>(now - modeStart).count();
-
-        if(inScatter && elapsed >= 7.0)
-        {
-            activeState->onExit(gs);
-            activeState = chase;
-            activeState->onEnter(gs);
-
-            inScatter = false;
-            modeStart = now;
-
-            std::cout << "CHANGE TO CHASE\n";
-        }
-        else if(!inScatter && elapsed >= 20.0)
-        {
-            activeState->onExit(gs);
-            activeState = scatter;
-            activeState->onEnter(gs);
-
-            inScatter = true;
-            modeStart = now;
-
-            std::cout << "CHANGE TO SCATTER\n";
-        }
-	}
-
-
 	return activeState->onUpdate(gs);
 }
 
@@ -239,6 +201,8 @@ Move ScatterState::onUpdate(const GameState& game)
 		moves = game.getMaze().getGhostLegalMoves(myPos, character->getDirection());
 	}
 
+	if(moves.empty()) { return PASS; }
+
 	float minDis = 1e9;
 	Move bestMove = moves[0];
 
@@ -262,6 +226,76 @@ Move ScatterState::onUpdate(const GameState& game)
 	return bestMove;
 }
 
+//////////////////////////////////NonFrightenedState////////////////////////////////
+NonFrightenedState::NonFrightenedState(
+    std::shared_ptr<Character> character,
+    std::shared_ptr<FSMState> chase_,
+    std::shared_ptr<FSMState> scatter_)
+    : FSMState(character), chase(chase_), scatter(scatter_)
+{
+    activeSubState = chase;
+    inScatter = false;
+}
+
+void NonFrightenedState::onEnter(const GameState& gs)
+{
+    modeStart = std::chrono::high_resolution_clock::now();
+    activeSubState = chase;
+    inScatter = false;
+    activeSubState->onEnter(gs);
+}
+
+Move NonFrightenedState::onUpdate(const GameState& gs)
+{
+    int pillsLeft = gs.getMaze().getPillPositions().size();	//pildoras restantes 
+
+    bool elroy = pillsLeft < 40;
+
+    auto now = std::chrono::high_resolution_clock::now();
+    double elapsed = std::chrono::duration<double>(now - modeStart).count();
+
+    //CRUISE ELROY: cancela scatter
+    if(elroy && activeSubState == scatter)
+    {
+        activeSubState->onExit(gs);
+        activeSubState = chase;
+        activeSubState->onEnter(gs);
+        inScatter = false;
+
+        std::cout << "ELROY: FORCE CHASE\n";
+    }
+
+    //CICLO NORMAL
+    if(!elroy)
+    {
+        if(inScatter && elapsed >= 7.0)
+        {
+            activeSubState->onExit(gs);
+            activeSubState = chase;
+            activeSubState->onEnter(gs);
+
+            inScatter = false;
+            modeStart = now;
+
+            std::cout << "SCATTER -> CHASE\n";
+        }
+        else if(!inScatter && elapsed >= 20.0)
+        {
+            activeSubState->onExit(gs);
+            activeSubState = scatter;
+            activeSubState->onEnter(gs);
+
+            inScatter = true;
+            modeStart = now;
+
+            std::cout << "CHASE -> SCATTER\n";
+        }
+    }
+
+    return activeSubState->onUpdate(gs);
+}
+
+
 /////////////////////////////////State Transitions//////////////////////////////////////////7
 // De chase --> Frightened
 ToFrightenedTransition::ToFrightenedTransition(std::shared_ptr<FSMState> next,
@@ -277,16 +311,16 @@ std::shared_ptr<FSMState> ToFrightenedTransition::getNextState(){ return next; }
 
 
 //De Frightened --> Chase
-ToChaseTransition::ToChaseTransition(std::shared_ptr<FSMState> next,
+ToNonFrightenedTransition::ToNonFrightenedTransition(std::shared_ptr<FSMState> next,
     std::shared_ptr<Character> character) : next(next), character(character) {}
 
-bool ToChaseTransition::isValid(const GameState& gs)
+bool ToNonFrightenedTransition::isValid(const GameState& gs)
 {
 	auto ghost = std::dynamic_pointer_cast<Ghost>(character);
 	return !ghost->isEdible();
 }
 
-std::shared_ptr<FSMState> ToChaseTransition::getNextState(){ return next; }
+std::shared_ptr<FSMState> ToNonFrightenedTransition::getNextState(){ return next; }
 
 
 
