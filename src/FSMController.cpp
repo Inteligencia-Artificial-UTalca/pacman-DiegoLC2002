@@ -92,20 +92,28 @@ BlinkyStateMachine::BlinkyStateMachine(std::shared_ptr<Character> _character):Fi
 	activeState->addTransition(std::make_shared<PillTransition>(activeState));
 	*/
 
-	auto chase = std::make_shared<ChaseState>(character);
-	auto frightened = std::make_shared<FrightenedState>(character);
+	chase = std::make_shared<ChaseState>(character);
+	scatter = std::make_shared<ScatterState>(character);
+	frightened = std::make_shared<FrightenedState>(character);
 
 	//Guardar estados
 	states.push_back(chase);
+	states.push_back(scatter);
 	states.push_back(frightened);
 
 	//Estado incial
 	initialState = chase;
 	activeState = initialState;
 
+	modeStart = std::chrono::high_resolution_clock::now();
+	inScatter = false; // empieza en Chase
+
 	//Transiciones entre estados
 	//Chase --> Frightened
 	chase->addTransition(std::make_shared<ToFrightenedTransition>(frightened, character));
+
+	//Scatter --> Frightened
+	scatter->addTransition(std::make_shared<ToFrightenedTransition>(frightened, character));
 
 	//Frightened --> Chase
 	frightened->addTransition(std::make_shared<ToChaseTransition>(chase, character));
@@ -115,6 +123,8 @@ BlinkyStateMachine::BlinkyStateMachine(std::shared_ptr<Character> _character):Fi
 
 
 Move BlinkyStateMachine::update(const GameState& gs){
+
+	//Revisar transiciones a frigtened
 	auto t=activeState->getActiveTransition(gs);
 	if(t!=nullptr){
 		activeState->onExit(gs);
@@ -122,6 +132,38 @@ Move BlinkyStateMachine::update(const GameState& gs){
 		activeState=t->getNextState();
 		activeState->onEnter(gs);
 	}
+
+	//Manejar tiempo si no se esta en frightened
+	if(activeState != frightened)
+	{
+		auto now = std::chrono::high_resolution_clock::now();
+        double elapsed = std::chrono::duration<double>(now - modeStart).count();
+
+        if(inScatter && elapsed >= 7.0)
+        {
+            activeState->onExit(gs);
+            activeState = chase;
+            activeState->onEnter(gs);
+
+            inScatter = false;
+            modeStart = now;
+
+            std::cout << "CHANGE TO CHASE\n";
+        }
+        else if(!inScatter && elapsed >= 20.0)
+        {
+            activeState->onExit(gs);
+            activeState = scatter;
+            activeState->onEnter(gs);
+
+            inScatter = true;
+            modeStart = now;
+
+            std::cout << "CHANGE TO SCATTER\n";
+        }
+	}
+
+
 	return activeState->onUpdate(gs);
 }
 
@@ -176,6 +218,49 @@ Move FrightenedState::onUpdate(const GameState& game)
 	return bestMove;
 }
 
+///////////////////////////////ScatterState///////////////////////////////////////
+ScatterState::ScatterState(std::shared_ptr<Character> _character) : FSMState(_character){}
+
+Move ScatterState::onUpdate(const GameState& game)
+{
+	std::vector<Move> moves;
+
+	const auto myPos = character->getPos();
+
+	//Esquina superior derecha
+	std::pair<int,int> target = {1000,0};	//Afuera del mapa (aproximacion)
+
+	if(character->getDirection() == PASS)
+	{
+		moves = game.getMaze().getPossibleMoves(myPos);
+	}
+	else
+	{
+		moves = game.getMaze().getGhostLegalMoves(myPos, character->getDirection());
+	}
+
+	float minDis = 1e9;
+	Move bestMove = moves[0];
+
+	//Buscar el movimiento más lejano
+	for(auto m : moves)
+	{
+		int vecino = game.getMaze().getNeighbour(myPos, m);
+
+		if(vecino < 0) { continue; }
+
+		auto vecinoPos = game.getMaze().getNodePos(vecino);
+		float dist = euclid2(vecinoPos, target);
+
+		if(dist < minDis)
+		{
+			minDis = dist;
+			bestMove = m;
+		}
+	}
+
+	return bestMove;
+}
 
 /////////////////////////////////State Transitions//////////////////////////////////////////7
 // De chase --> Frightened
@@ -202,3 +287,27 @@ bool ToChaseTransition::isValid(const GameState& gs)
 }
 
 std::shared_ptr<FSMState> ToChaseTransition::getNextState(){ return next; }
+
+
+
+/*
+//////////////////////////////TimeTransition//////////////////////
+TimeTransition::TimeTransition(std::shared_ptr<FSMState> next, double seconds) : next(next), duration(seconds)
+{
+	lastSwitch = std::chrono::high_resolution_clock::now();
+}
+
+bool TimeTransition::isValid(const GameState&)
+{
+	auto now = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> diff = now - lastSwitch;
+
+	if(diff.count() >= duration)
+	{
+		lastSwitch = now;
+		return true;
+	}
+	return false;
+}
+
+std::shared_ptr<FSMState> TimeTransition::getNextState() { return next; } */

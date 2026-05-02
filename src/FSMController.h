@@ -45,6 +45,13 @@ public:
 
 class BlinkyStateMachine: public FiniteStateMachine
 {
+	std::shared_ptr<FSMState> chase;
+    std::shared_ptr<FSMState> scatter;
+    std::shared_ptr<FSMState> frightened;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> modeStart;
+    bool inScatter;
+
 	public:
 		BlinkyStateMachine(std::shared_ptr<Character> _character);
 		Move update(const GameState& gs) override;
@@ -56,9 +63,17 @@ class FrightenedState : public FSMState
 {
 	public:
 		FrightenedState(std::shared_ptr<Character> character);
-		Move onUpdate (const GameState& gs) override;
+		Move onUpdate(const GameState& gs) override;
 
 };
+
+class ScatterState : public FSMState
+{
+	public:
+		ScatterState(std::shared_ptr<Character> character);
+		Move onUpdate(const GameState& gs) override;
+};
+
 
 class ToFrightenedTransition : public FSMTransition
 {
@@ -81,5 +96,19 @@ class ToChaseTransition : public FSMTransition
 		bool isValid(const GameState& gs) override;
 		std::shared_ptr<FSMState> getNextState() override;
 };
+
+/*
+class TimeTransition : public FSMTransition
+{
+	std::shared_ptr<FSMState> next;
+	std::chrono::time_point<std::chrono::high_resolution_clock> lastSwitch;
+	double duration;
+
+	public:
+		TimeTransition(std::shared_ptr<FSMState> next, double seconds);
+		bool isValid(const GameState& gs) override;
+		std::shared_ptr<FSMState> getNextState() override;
+};
+*/
 
 #endif /* FSMCONTROLLER_H_ */
