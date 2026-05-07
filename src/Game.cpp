@@ -20,6 +20,7 @@
 #include "PinkyController.h"
 #include "SueController.h"
 #include "PacmanController.h"
+#include "FSMController.h"
 
 extern bool quick;
 extern bool nogui;
@@ -41,7 +42,7 @@ gv(std::make_unique<GameView>(std::vector<std::string>{"images/maze-a.png","imag
 		ghosts.push_back(ghost);
 	}
 	gameState.addGhosts(ghosts);
-	ghostsControl.push_back(std::make_shared<FSMController>(ghosts[0]));
+	ghostsControl.push_back(std::make_shared<BlinkyFSM>(ghosts[0]));
 	//ghostsControl.push_back(std::make_shared<BTGhostController>(ghosts[1]));
 	//ghostsControl.push_back(std::make_shared<SimpleController>(ghosts[2]));
 	//ghostsControl.push_back(std::make_shared<RandomController>(ghosts[3]));
