@@ -5,7 +5,7 @@
 PinkyInfo* PinkyInfo::info = nullptr;
 
 /////////////////////// Controladores ////////////////////////
-PinkyBT::PinkyBT(std::shared_ptr<Character> Character) : Controller(character),
+PinkyBT::PinkyBT(std::shared_ptr<Character> character) : Controller(character),
                                                          root(std::make_shared<Selector>())
 {
     //Frightened
@@ -93,4 +93,117 @@ Status PinkyChase::update()
     PinkyInfo::getInfo()->out_move = bestMove;
 
     return BH_SUCCESS;
+}
+
+
+//////////////////////// Scatter ////////////////////////
+PinkyScatter::PinkyScatter()
+{
+    target = std::make_pair(0,0);   //Esquina superior izquierda
+}
+
+Status PinkyScatter::update()
+{
+    auto character = PinkyInfo::getInfo()->in_character;
+    auto gs = PinkyInfo::getInfo()->in_gameState;
+
+    std::vector<Move> moves;
+
+    //Obtener posibles movimientos
+	if(character->getDirection() == PASS)
+	{
+		moves = gs->getMaze().getPossibleMoves(character->getPos()); 
+	}
+	else
+	{
+		moves = gs->getMaze().getGhostLegalMoves(character->getPos(), character->getDirection()); 
+	}
+
+    float minDist = 1e9;
+    Move bestMove = PASS;
+
+    for(auto move : moves)
+    {
+        if(move == PASS) { continue; }
+
+        int next = gs->getMaze().getNeighbour(character->getPos(), move);
+        auto pos = gs->getMaze().getNodePos(next);
+        float dist = euclid2(target, pos);
+
+        if(dist < minDist)
+        {
+            minDist = dist;
+            bestMove = move;
+        }
+    }
+
+    PinkyInfo::getInfo()->out_move = bestMove;
+
+    return BH_SUCCESS;
+}
+
+
+//////////////////////// Frightened ////////////////////////
+PinkyFrightened::PinkyFrightened() : Behavior(), e(rand()), uniform_dist(0, 3)
+{
+}
+
+
+Status PinkyFrightened::update()
+{
+    auto character = PinkyInfo::getInfo()->in_character;
+    auto gs = PinkyInfo::getInfo()->in_gameState;
+
+    std::vector<Move> moves;
+
+    //Obtener posibles movimientos
+	if(character->getDirection() == PASS)
+	{
+		moves = gs->getMaze().getPossibleMoves(character->getPos()); 
+	}
+	else
+	{
+		moves = gs->getMaze().getGhostLegalMoves(character->getPos(), character->getDirection()); 
+	}
+
+    Move m = moves[rand() % moves.size()];
+
+    PinkyInfo::getInfo()->out_move = m;
+
+    return BH_SUCCESS;
+}
+
+//////////////////////// Conditions ////////////////////////
+
+Status PinkyPowerpill::update()
+{
+    auto character = PinkyInfo::getInfo()->in_character;
+    auto ghost = dynamic_cast<Ghost*>(character.get());
+
+    if(ghost != nullptr && ghost->isEdible())
+    {
+        return BH_SUCCESS;
+    }
+
+    return BH_FAILURE;
+}
+
+//////////////////////// Timeout ////////////////////////
+
+PinkyTimeout::PinkyTimeout()
+{
+    lastTime = std::chrono::high_resolution_clock::now();
+}
+
+Status PinkyTimeout::update()
+{
+    std::chrono::duration<float> timeStamp =
+        std::chrono::high_resolution_clock::now() - lastTime;
+
+    if((int)timeStamp.count() % 27 < 7)
+    {
+        return BH_SUCCESS;
+    }
+
+    return BH_FAILURE;
 }
