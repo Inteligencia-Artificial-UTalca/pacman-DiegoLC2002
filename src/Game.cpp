@@ -35,9 +35,9 @@ gv(std::make_unique<GameView>(std::vector<std::string>{"images/maze-a.png","imag
 	auto pacman=std::make_shared<MsPacMan>(gameState.getMaze().getPacmanStart());
 	gameState.addPacMan(pacman);
 	// pacmanControl=std::make_shared<KeyboardController>(pacman);
-	// pacmanControl=std::make_shared<SimplePacmanController>(pacman);
+	 pacmanControl=std::make_shared<SimplePacmanController>(pacman);
 	// pacmanControl=std::make_shared<PacmanController>(pacman);
-	 pacmanControl=std::make_shared<MsPacmanBT>(pacman);
+	// pacmanControl=std::make_shared<MsPacmanBT>(pacman);
 
 
 	std::vector<std::shared_ptr<Ghost>> ghosts;

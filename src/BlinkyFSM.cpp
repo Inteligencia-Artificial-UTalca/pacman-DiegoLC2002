@@ -219,7 +219,7 @@ Move NonFrightenedState::onUpdate(const GameState& gs)
             inScatter = false;
             modeStart = now;
 
-            std::cout << "SCATTER -> CHASE\n";
+            //std::cout << "SCATTER -> CHASE\n";
         }
         else if(!inScatter && elapsed >= 20.0)  //chase --> scater
         {
@@ -230,7 +230,7 @@ Move NonFrightenedState::onUpdate(const GameState& gs)
             inScatter = true;
             modeStart = now;
 
-            std::cout << "CHASE -> SCATTER\n";
+            //std::cout << "CHASE -> SCATTER\n";
         }
     }
 

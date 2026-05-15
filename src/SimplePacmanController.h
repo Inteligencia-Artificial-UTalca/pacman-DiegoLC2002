@@ -3,7 +3,6 @@
 
 #include "Controller.h"
 
-
 class SimplePacmanController: public Controller {
 	Move getClosestMove(const GameState& game, std::pair<int,int> target)const;
 	Move getFarthestMove(const GameState& game, std::pair<int,int> target)const;

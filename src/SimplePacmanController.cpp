@@ -90,8 +90,6 @@ SimplePacmanController::getMove(const GameState& game){
 	float hunger=0.0f;
 	Move eatGhostMove=PASS;
 
-
-
 	//arrancar de fantasmas cercanos que me pueden comer 
 	for(int i=0;i<4;i++){
 		if((!ghostsEdible[i])){
@@ -114,8 +112,10 @@ SimplePacmanController::getMove(const GameState& game){
 			}
 		}
 	}
-	//std::cout<<"fear="<<fear<<std::endl;
-	//std::cout<<"hunger="<<hunger<<std::endl;
+
+	std::cout << "fear = " << fear << std::endl;
+	std::cout << "hunger = " << hunger <<std::endl;
+
 	if(fear>hunger)return escapeMove;
 	else return eatGhostMove;
 	
