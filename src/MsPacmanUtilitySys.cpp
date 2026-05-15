@@ -175,24 +175,22 @@ Move MsPacmanUtilitySys::getMove(const GameState& game)
 
 
     //Comparar utilidades 
-    std::cout << "fear = " << fear << std::endl;
-    std::cout << "hunger = " << hunger << std::endl;
-    std::cout << "pill = " << pillUtility << std::endl;
+    //std::cout << "fear = " << fear << std::endl;
+    //std::cout << "hunger = " << hunger << std::endl;
+    //std::cout << "pill = " << pillUtility << std::endl;
 
     if(fear > hunger && fear > pillUtility)
     {
-        std::cout << "Estamos escapando.!!!\n";
+        //std::cout << "Estamos escapando.!!!\n";
         return escapeMove;
     }
 
     if(hunger > pillUtility)
     {
-        std::cout << "Vamos a comer fantasmas.!!!\n";
+        //std::cout << "Vamos a comer fantasmas.!!!\n";
         return huntMove;
     }
 
-    std::cout << "Pastilllas Yumi.!!!\n";
-
-
+    //std::cout << "Pastilllas Yumi.!!!\n";
     return pillMove;
 }

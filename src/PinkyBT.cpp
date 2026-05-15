@@ -80,6 +80,9 @@ Status PinkyChase::update()
         if(move == PASS) { continue; }
 
         int next = gs->getMaze().getNeighbour(character->getPos(), move);
+
+        if(next < 0) { continue; }
+
         auto pos = gs->getMaze().getNodePos(next);
         float dist = euclid2(target, pos);
 
@@ -127,6 +130,9 @@ Status PinkyScatter::update()
         if(move == PASS) { continue; }
 
         int next = gs->getMaze().getNeighbour(character->getPos(), move);
+
+        if(next < 0) { continue; }
+
         auto pos = gs->getMaze().getNodePos(next);
         float dist = euclid2(target, pos);
 
@@ -165,6 +171,12 @@ Status PinkyFrightened::update()
 	{
 		moves = gs->getMaze().getGhostLegalMoves(character->getPos(), character->getDirection()); 
 	}
+
+    if(moves.empty())
+    {
+        PinkyInfo::getInfo()->out_move = PASS;
+        return BH_FAILURE;
+    }
 
     Move m = moves[rand() % moves.size()];
 
