@@ -114,8 +114,13 @@ Move ClydeUtilitySys::getMove(const GameState& game)
     auto myPos = game.getMaze().getNodePos(character->getPos());
 
     //Detectar si pacman entra en el territorio
-    //float distToPacman = sqrt(euclid2(myPos, pacmanPos));
     float distToTerritory = sqrt(euclid2(pacmanPos, territoryCenter));
+
+    float maxTerritoryDist = 600.0f;
+
+    float normalizedDist = std::min(distToTerritory / maxTerritoryDist, 1.0f);
+
+    chaseUtility = 1.0f - normalizedDist;
 
     //Estado frigtened
     if(ghost->isEdible())
@@ -124,7 +129,7 @@ Move ClydeUtilitySys::getMove(const GameState& game)
     }
 
     //Calcular utilidad de perseguir
-    chaseUtility =  std::max(0.0f, 600.0f - distToTerritory) / 600.0f;
+    //chaseUtility =  std::max(0.0f, 600.0f - distToTerritory) / 600.0f;
 
     //debug
     std::cout << "Patrol: " << patrolUtility
